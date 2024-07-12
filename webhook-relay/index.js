@@ -3,7 +3,7 @@ const axios = require('axios');
 const request = require('request');
 
 const app = express();
-const port = 3000;
+const port = process.env.PORT || 3000;
 const discordWebhookUrl = process.env.DISCORD_WEBHOOK_URL;
 const bridgecardSecretKey = process.env.BRIDGECARD_SECRET_KEY;
 const bridgecardApiToken = process.env.BRIDGECARD_API_TOKEN;
@@ -25,7 +25,16 @@ function getCardholderDetails(cardholderId) {
       if (error) {
         reject(error);
       } else {
-        resolve(JSON.parse(response.body));
+        try {
+          const responseBody = JSON.parse(response.body);
+          if (responseBody.status === 'success') {
+            resolve(responseBody.data);
+          } else {
+            reject(new Error(`Failed to fetch cardholder details: ${responseBody.message}`));
+          }
+        } catch (e) {
+          reject(new Error('Error parsing cardholder details response'));
+        }
       }
     });
   });
@@ -39,8 +48,13 @@ app.post('/webhook', async (req, res) => {
     // Fetch cardholder details
     const cardholderDetails = await getCardholderDetails(cardholder_id);
 
+    // Check if cardholderDetails is valid
+    if (!cardholderDetails) {
+      throw new Error('Cardholder details are not available');
+    }
+
     // Extract necessary details
-    const { first_name, last_name, email_address, phone } = cardholderDetails.data;
+    const { first_name, last_name, email_address, phone } = cardholderDetails;
 
     // Customize the message content for Discord
     const discordMessage = {
@@ -52,7 +66,7 @@ app.post('/webhook', async (req, res) => {
 
     res.status(200).send('Webhook received and forwarded to Discord');
   } catch (error) {
-    console.error('Error forwarding webhook to Discord:', error);
+    console.error('Error forwarding webhook to Discord:', error.message);
     res.status(500).send('Error processing webhook');
   }
 });
