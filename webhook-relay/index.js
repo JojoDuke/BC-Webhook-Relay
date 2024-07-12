@@ -3,7 +3,7 @@ const axios = require('axios');
 const request = require('request');
 
 const app = express();
-const port = process.env.PORT || 3000;
+const port = 3000;
 const discordWebhookUrl = process.env.DISCORD_WEBHOOK_URL;
 const bridgecardSecretKey = process.env.BRIDGECARD_SECRET_KEY;
 const bridgecardApiToken = process.env.BRIDGECARD_API_TOKEN;
