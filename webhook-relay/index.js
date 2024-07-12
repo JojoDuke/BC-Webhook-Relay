@@ -24,7 +24,7 @@ async function getCardholderDetails(cardholderId) {
     };
     
     const response = await axios(options);
-    console.log('API Response:', response.data); // Log the API response
+    //console.log('API Response:', response.data); // Log the API response
     
     if (response.data.status === 'success') {
       return response.data.data;
@@ -63,17 +63,12 @@ app.post('/webhook', async (req, res) => {
   try {
     const { event, data } = req.body;
     const { cardholder_id, amount } = data;
-    console.log('Received Event:', event); // Log the event
-    console.log('Cardholder ID:', cardholder_id); // Log the cardholder ID
-    console.log('Amount (cents):', amount); // Log the amount in cents
 
     // Convert amount from cents to dollars
     const amountInDollars = (amount / 100).toFixed(2);
-    console.log('Amount (dollars):', amountInDollars); // Log the amount in dollars
 
     // Fetch cardholder details
     const cardholderDetails = await getCardholderDetails(cardholder_id);
-    console.log('Cardholder Details:', cardholderDetails); // Log the fetched cardholder details
 
     // Check if cardholderDetails is valid
     if (!cardholderDetails) {
