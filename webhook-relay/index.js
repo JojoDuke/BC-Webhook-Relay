@@ -28,7 +28,7 @@ function getCardholderDetails(cardholderId) {
       } else {
         try {
           const responseBody = JSON.parse(response.body);
-          console.log('API Response:', responseBody);
+          //console.log('API Response:', responseBody);
           if (responseBody.status === 'success') {
             resolve(responseBody.data);
           } else {
@@ -45,11 +45,11 @@ function getCardholderDetails(cardholderId) {
 app.post('/webhook', async (req, res) => {
   try {
     const { event, data } = req.body;
-    const { cardholder_id } = data;
+    const { cardholder_id, amount } = data;
 
     // Fetch cardholder details
     const cardholderDetails = await getCardholderDetails(cardholder_id);
-    //console.log('Cardholder Details:', cardholderDetails); // Log the fetched cardholder details
+    const amountInDollars = (amount / 100).toFixed(2);
 
     // Check if cardholderDetails is valid
     if (!cardholderDetails) {
@@ -61,7 +61,7 @@ app.post('/webhook', async (req, res) => {
 
     // Customize the message content for Discord
     const discordMessage = {
-      content: `New Event: ${event}\nDetails: ${JSON.stringify(data, null, 2)}\n\nUser Details:\nName: ${first_name} ${last_name}\nEmail: ${email_address}\nPhone: ${phone}`
+      content: `New Event: ${event}\nDetails: ${JSON.stringify(data, null, 2)}\n\nAmount: $${amountInDollars}\nUser Details:\nName: ${first_name} ${last_name}\nEmail: ${email_address}\nPhone: ${phone}`
     };
 
     // Send the message to Discord
