@@ -1,9 +1,10 @@
 const express = require('express');
 const axios = require('axios');
 const request = require('request');
+require('dotenv').config();
 
 const app = express();
-const port = process.env.PORT || 3000;
+const port = 3000;
 const discordWebhookUrl = process.env.DISCORD_WEBHOOK_URL;
 const bridgecardSecretKey = process.env.BRIDGECARD_SECRET_KEY;
 const bridgecardApiToken = process.env.BRIDGECARD_API_TOKEN;
@@ -27,6 +28,7 @@ function getCardholderDetails(cardholderId) {
       } else {
         try {
           const responseBody = JSON.parse(response.body);
+          console.log('API Response:', responseBody);
           if (responseBody.status === 'success') {
             resolve(responseBody.data);
           } else {
@@ -46,7 +48,8 @@ app.post('/webhook', async (req, res) => {
     const { cardholder_id } = data;
 
     // Fetch cardholder details
-    const cardholderDetails = await getCardholderDetails(cardholder_id);
+    const cardholderDetails = await getCardholderDetails("2695a75f24784a288ffb9a0e6821aa01");
+    console.log('Cardholder Details:', cardholderDetails); // Log the fetched cardholder details
 
     // Check if cardholderDetails is valid
     if (!cardholderDetails) {
