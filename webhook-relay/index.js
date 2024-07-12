@@ -1,7 +1,7 @@
 const express = require('express');
 const axios = require('axios');
 const request = require('request');
-require('dotenv').config();
+require('dotenv').config();  // Load environment variables from .env file
 
 const app = express();
 const port = 3000;
@@ -13,43 +13,67 @@ const bridgecardApiUrl = process.env.BRIDGECARD_API_URL;
 app.use(express.json());
 
 // Function to fetch cardholder details from Bridgecard API
-function getCardholderDetails(cardholderId) {
-  return new Promise((resolve, reject) => {
-    var options = {
+async function getCardholderDetails(cardholderId) {
+  try {
+    const options = {
       'method': 'GET',
       'url': `${bridgecardApiUrl}/cardholder/get_cardholder?cardholder_id=${cardholderId}`,
       'headers': {
         'token': `Bearer ${bridgecardApiToken}`
       }
     };
-    request(options, function (error, response) {
-      if (error) {
-        reject(error);
-      } else {
-        try {
-          const responseBody = JSON.parse(response.body);
-          //console.log('API Response:', responseBody);
-          if (responseBody.status === 'success') {
-            resolve(responseBody.data);
-          } else {
-            reject(new Error(`Failed to fetch cardholder details: ${responseBody.message}`));
-          }
-        } catch (e) {
-          reject(new Error('Error parsing cardholder details response'));
-        }
-      }
-    });
-  });
+    
+    const response = await axios(options);
+    console.log('API Response:', response.data); // Log the API response
+    
+    if (response.data.status === 'success') {
+      return response.data.data;
+    } else {
+      throw new Error(`Failed to fetch cardholder details: ${response.data.message}`);
+    }
+  } catch (error) {
+    if (error.response && error.response.status === 429) {
+      const retryAfter = error.response.headers['retry-after'] || 1;
+      console.log(`Rate limited by Bridgecard. Retrying after ${retryAfter} seconds...`);
+      await new Promise(resolve => setTimeout(resolve, retryAfter * 1000));
+      return getCardholderDetails(cardholderId); // Retry the request
+    } else {
+      throw error;
+    }
+  }
+}
+
+// Function to send a message to Discord with rate limiting handling
+async function sendToDiscord(discordMessage) {
+  try {
+    await axios.post(discordWebhookUrl, discordMessage);
+  } catch (error) {
+    if (error.response && error.response.status === 429) {
+      const retryAfter = error.response.headers['retry-after'] || 1;
+      console.log(`Rate limited by Discord. Retrying after ${retryAfter} seconds...`);
+      await new Promise(resolve => setTimeout(resolve, retryAfter * 1000));
+      return sendToDiscord(discordMessage); // Retry the request
+    } else {
+      throw error;
+    }
+  }
 }
 
 app.post('/webhook', async (req, res) => {
   try {
     const { event, data } = req.body;
     const { cardholder_id, amount } = data;
+    console.log('Received Event:', event); // Log the event
+    console.log('Cardholder ID:', cardholder_id); // Log the cardholder ID
+    console.log('Amount (cents):', amount); // Log the amount in cents
+
+    // Convert amount from cents to dollars
+    const amountInDollars = (amount / 100).toFixed(2);
+    console.log('Amount (dollars):', amountInDollars); // Log the amount in dollars
 
     // Fetch cardholder details
     const cardholderDetails = await getCardholderDetails(cardholder_id);
-    const amountInDollars = (amount / 100).toFixed(2);
+    console.log('Cardholder Details:', cardholderDetails); // Log the fetched cardholder details
 
     // Check if cardholderDetails is valid
     if (!cardholderDetails) {
@@ -61,11 +85,11 @@ app.post('/webhook', async (req, res) => {
 
     // Customize the message content for Discord
     const discordMessage = {
-      content: `New Event: ${event}\nDetails: ${JSON.stringify(data, null, 2)}\n\nAmount: $${amountInDollars}\nUser Details:\nName: ${first_name} ${last_name}\nEmail: ${email_address}\nPhone: ${phone}`
+      content: `New Event: ${event}\nDetails: ${JSON.stringify(data, null, 2)}\n\nAmount: $${amountInDollars}\n\nUser Details:\nName: ${first_name} ${last_name}\nEmail: ${email_address}\nPhone: ${phone}`
     };
 
-    // Send the message to Discord
-    await axios.post(discordWebhookUrl, discordMessage);
+    // Send the message to Discord with rate limiting handling
+    await sendToDiscord(discordMessage);
 
     res.status(200).send('Webhook received and forwarded to Discord');
   } catch (error) {
@@ -74,9 +98,6 @@ app.post('/webhook', async (req, res) => {
   }
 });
 
-app.listen(port, async () => {
+app.listen(port, () => {
   console.log(`Webhook relay server listening at http://localhost:${port}`);
-
-  //const cardholderDetails = await getCardholderDetails("2695a75f24784a288ffb9a0e6821aa01");
-  //console.log('Cardholder Details:', cardholderDetails.address);
 });
