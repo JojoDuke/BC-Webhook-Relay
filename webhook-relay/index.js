@@ -16,10 +16,10 @@ app.use(express.json());
 function getCardholderDetails(cardholderId) {
   return new Promise((resolve, reject) => {
     var options = {
-      method: 'GET',
-      url: `${bridgecardApiUrl}/cardholder/get_cardholder?cardholder_id=${cardholderId}`,
-      headers: {
-        'Authorization': `Bearer ${bridgecardApiToken}`
+      'method': 'GET',
+      'url': `${bridgecardApiUrl}/cardholder/get_cardholder?cardholder_id=${cardholderId}`,
+      'headers': {
+        'token': `Bearer ${bridgecardApiToken}`
       }
     };
     request(options, function (error, response) {
@@ -48,8 +48,8 @@ app.post('/webhook', async (req, res) => {
     const { cardholder_id } = data;
 
     // Fetch cardholder details
-    const cardholderDetails = await getCardholderDetails("2695a75f24784a288ffb9a0e6821aa01");
-    console.log('Cardholder Details:', cardholderDetails); // Log the fetched cardholder details
+    const cardholderDetails = await getCardholderDetails(cardholder_id);
+    //console.log('Cardholder Details:', cardholderDetails); // Log the fetched cardholder details
 
     // Check if cardholderDetails is valid
     if (!cardholderDetails) {
@@ -74,6 +74,9 @@ app.post('/webhook', async (req, res) => {
   }
 });
 
-app.listen(port, () => {
+app.listen(port, async () => {
   console.log(`Webhook relay server listening at http://localhost:${port}`);
+
+  //const cardholderDetails = await getCardholderDetails("2695a75f24784a288ffb9a0e6821aa01");
+  //console.log('Cardholder Details:', cardholderDetails.address);
 });
